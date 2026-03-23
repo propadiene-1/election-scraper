@@ -28,6 +28,7 @@ webscraping work for wellesley polisci
     - notes
         - no candidate registration info (nonexistent for 1000+, 28 separate files for <1000)
         - candidate name, gender, etc. obtained from results files
+        - only has list headers
 
 - read_census.py: parse big census file (not working rn)
 

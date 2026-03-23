@@ -7,7 +7,7 @@ webscraping work for wellesley polisci
 - process_less_1000.py: for <1000 communes
 - process_plus_1000.py: for 1000+ communes
 - utils.py: tools for above functions
-- test.py: test candidate info (compare csv w/ results source file)
+- merge_demographics.py: 
 
 - france_2020
     - tour_1
@@ -30,7 +30,8 @@ webscraping work for wellesley polisci
         - candidate name, gender, etc. obtained from results files
         - only has list headers
 
-- read_census.py: parse big census file (not working rn)
+- new_france_joined_outputs
+    - both years joined w/ demographic data
 
 ## Notes
 
@@ -39,3 +40,9 @@ webscraping work for wellesley polisci
 - no age data anywhere
 - elections in france have tour 1, and tour 2, not everyone makes it to tour 2 (tour 2 results only has ppl who made it)
 - large communes (1000+ people) vote for lists instead of individuals, candidate's vote # = the vote # of the whole list
+- PLM (paris, lyon, marseille) vote by arrondissment (subdivisions w/ unique "SR" commune codes)
+
+- checks
+    - cross_check.py: cross check candidate outputs
+    - check_joined_outputs.py: cross_check outputs merged w/ demographics
+    - test.py: test candidate info (compare csv w/ results source file)

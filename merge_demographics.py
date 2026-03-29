@@ -21,9 +21,9 @@ import pandas as pd
 from pathlib import Path
 
 # --- Adjust for census / results files -----
-CENSUS_YEAR = "16"   # 2-digit year: "06", "11", "16", "22"
-INCOME_YEAR = "16"   # income data year: "06", "11", "16", "21"
-YEAR = "2014" #2014 or 2020
+CENSUS_YEAR = "22"   # 2-digit year: "06", "11", "16", "22"
+INCOME_YEAR = "21"     # income data year: "06", "11", "16", "21" — set to None to omit income columns
+YEAR = "2020" #2014 or 2020
 TOUR = "2"
 COMMUNE_TYPE = "plus" #plus or less
 
@@ -63,8 +63,10 @@ CENSUS_COLS = [
     f"{p}CHOM1564",         # unemployed 15-64
     f"{p}ACT1564",          # active population 15-64 (denominator)
 
-    f"MED{INCOME_YEAR}",    # median income
-    f"TP60{INCOME_YEAR}",   # poverty rate
+    *(
+        [f"MED{INCOME_YEAR}", f"TP60{INCOME_YEAR}"]
+        if INCOME_YEAR else []
+    ),
 ]
 
 
@@ -102,7 +104,8 @@ def compute_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    print(f"Census year: 20{CENSUS_YEAR} | Income year: 20{INCOME_YEAR}")
+    income_label = f"20{INCOME_YEAR}" if INCOME_YEAR else "omitted"
+    print(f"Census year: 20{CENSUS_YEAR} | Income year: {income_label}")
 
     print("Loading election data...")
     elections = pd.read_csv(ELECTION_FILE, dtype={"commune_code": str})
@@ -132,13 +135,19 @@ if __name__ == "__main__":
 
     unmatched = merged[merged[f"{p}POP"].isna()]["commune_code"].unique()
     if len(unmatched) > 0:
-        print(f"  Unmatched communes: {len(unmatched)} — sample: {unmatched[:5]}")
+        print(f"  Unmatched communes: {len(unmatched)}")
+        unmatched_path = OUT_FILE.parent / f"unmatched_communes_tour{TOUR}_{YEAR}.txt"
+        unmatched_path.parent.mkdir(parents=True, exist_ok=True)
+        unmatched_path.write_text("\n".join(sorted(unmatched)), encoding="utf-8")
+        print(f"  Full list saved → {unmatched_path}")
 
     print("Computing derived percentages...")
     merged = compute_derived_columns(merged)
 
     #keep only percentages + total pop + income (no raw counts)
-    keep = {"CODGEO", f"{p}POP", f"MED{INCOME_YEAR}", f"TP60{INCOME_YEAR}"}
+    keep = {"CODGEO", f"{p}POP"}
+    if INCOME_YEAR:
+        keep |= {f"MED{INCOME_YEAR}", f"TP60{INCOME_YEAR}"}
     raw_to_drop = [c for c in census_raw.columns if c not in keep]
     merged = merged.drop(columns=raw_to_drop + ["CODGEO"], errors="ignore")
 

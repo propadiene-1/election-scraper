@@ -10,7 +10,6 @@ france_census/
 
 data/
 *.json
-*.txt
 *.xlsx
 *.xls
 

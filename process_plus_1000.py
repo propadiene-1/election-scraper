@@ -105,8 +105,15 @@ if __name__ == "__main__":
         df_reg = parse_registrations(FILE_REGISTRATIONS)
         df_reg = df_reg[df_reg["list_number"].notna() & (df_reg["list_number"] != "")]
         print("  Joining + computing elected status...")
-        df = df_reg.merge(df_lists, on=["commune_code", "list_number"], how="left")
-        df = df[df["votes"].notna()]
+        df_lists = df_lists.drop(columns=[c for c in ["last_name", "first_name"] if c in df_lists.columns])
+        df_full = df_reg.merge(df_lists, on=["commune_code", "list_number"], how="left")
+        df_dropped = df_full[df_full["votes"].isna()].copy()
+        df = df_full[df_full["votes"].notna()].copy()
+        dropped_path = YEAR_DIR / f"dropped_outputs/dropped_plus_1000_tour{TOUR}_{YEAR}.csv"
+        dropped_path.parent.mkdir(parents=True, exist_ok=True)
+        df_dropped.to_csv(dropped_path, index=False, encoding="utf-8-sig")
+        df_dropped.to_json(dropped_path.with_suffix(".json"), orient="records", force_ascii=False, indent=2)
+        print(f"  Dropped (no results match): {len(df_dropped):,} → {dropped_path}")
         df["votes"] = df["votes"].astype(int)
         df["seats_won"] = pd.to_numeric(df["seats_won"], errors="coerce").astype("Int64")
         df["elected"] = df["list_rank"] <= df["seats_won"]

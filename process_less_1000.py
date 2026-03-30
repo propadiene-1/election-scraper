@@ -107,9 +107,19 @@ if __name__ == "__main__":
         df_results = parse_results(FILE_RESULTS, YEAR)
         print("  Parsing registrations...")
         df_reg = parse_registrations(FILE_REGISTRATIONS)[["commune_code", "last_name", "gender"]]
+        # Restrict to communes in the less_1000 results so we don't flag plus_1000 candidates
+        less_communes = set(df_results["commune_code"].unique())
+        df_reg_less = df_reg[df_reg["commune_code"].isin(less_communes)]
         print("  Joining...")
-        df = df_results.merge(df_reg, on=["commune_code", "last_name"], how="left")
+        df_full = df_results.merge(df_reg_less, on=["commune_code", "last_name"], how="outer", indicator=True)
+        df_dropped = df_full[df_full["_merge"] == "right_only"].drop(columns=["_merge"])
+        df = df_full[df_full["_merge"] != "right_only"].drop(columns=["_merge"])
         df["gender"] = df["gender"].fillna(df["gender_raw"])
+        dropped_path = YEAR_DIR / f"dropped_outputs/dropped_less_1000_tour{TOUR}_{YEAR}.csv"
+        dropped_path.parent.mkdir(parents=True, exist_ok=True)
+        df_dropped.to_csv(dropped_path, index=False, encoding="utf-8-sig")
+        df_dropped.to_json(dropped_path.with_suffix(".json"), orient="records", force_ascii=False, indent=2)
+        print(f"  Dropped (registration in less_1000 commune, no result match): {len(df_dropped):,} → {dropped_path}")
 
     else:
         raise ValueError(f"No pipeline defined for year {YEAR}. Add one above.")

@@ -60,7 +60,7 @@ import pandas as pd
 from utils import clean, to_int, save_outputs
 
 # --- Adjust tour ------
-TOUR = 1  # 1 or 2
+TOUR = 2  # 1 or 2
 
 # --- Paths ------
 BASE_DIR       = Path("/Users/propadiene/cloned-repos/cities-webscraper")
@@ -239,11 +239,21 @@ if __name__ == "__main__":
     # and cross-validated party code / gender.
     # ~89% match; unmatched rows keep values from results blocks.
     print("  Enriching from candidats (join on commune_code + name)...")
-    df = df_lists.merge(
+    df_full = df_lists.merge(
         df_cands,
         on=["commune_code", "last_name", "first_name"],
-        how="left",
+        how="outer",
+        indicator=True,
     )
+    # Save candidats rows with no matching results entry
+    df_dropped = df_full[df_full["_merge"] == "right_only"].drop(columns=["_merge"])
+    dropped_path = YEAR_DIR / f"dropped_outputs/dropped_plus_1000_tour{TOUR}_2008.csv"
+    dropped_path.parent.mkdir(parents=True, exist_ok=True)
+    df_dropped.to_csv(dropped_path, index=False, encoding="utf-8-sig")
+    df_dropped.to_json(dropped_path.with_suffix(".json"), orient="records", force_ascii=False, indent=2)
+    print(f"  Dropped (candidats with no results match): {len(df_dropped):,} → {dropped_path}")
+
+    df = df_full[df_full["_merge"] != "right_only"].drop(columns=["_merge"])
     # Use candidats values where available (cleaner data), fall back to results
     df["list_name"]  = df["list_name_full"].combine_first(df["list_name"])
     df["party_code"] = df["party_code_cand"].combine_first(df["party_code"])

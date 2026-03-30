@@ -1,0 +1,27 @@
+column,description,source,availability,notes
+commune_code,INSEE commune code (5-digit),Election source file,All files,PLM communes have SR/SN suffix stripped before census join
+commune_name,Name of the commune,Election source file,All files,
+last_name,Candidate last name,Election source file,All less_1000 files; absent from 2020 plus_1000,
+first_name,Candidate first name,Election source file,All less_1000 files; absent from 2020 plus_1000,
+gender,Candidate gender (M/F),Election source file,All files,
+party_code,Political party code,Election source file,All plus_1000 files; absent from 2014 less_1000 tour1 source data; missing from all less_1000 column headers,2014 less_1000 tour1 source never included party codes
+list_name,Name of the electoral list,Election source file,plus_1000 files only,Not all candidates belong to a named list; ~5% empty
+votes,Number of votes received by candidate,Election source file,All files,
+elected,Whether candidate was elected (Elu/non-Elu),Election source file,All files except 2008,100% empty in 2008 — not present in source
+P11_POP,Total commune population (2011 census),INSEE dossier_complet.csv,2008 files,Used as census proxy for 2008 elections
+P16_POP,Total commune population (2016 census),INSEE dossier_complet.csv,2014 files,Used as census proxy for 2014 elections
+P22_POP,Total commune population (2022 census),INSEE dossier_complet.csv,2020 files,Used as census proxy for 2020 elections
+MED21,Median household disposable income in euros (2021),INSEE dossier_complet.csv,2020 files only,Not available in dossier for 2011 or 2016
+TP6021,Poverty rate — share of population below 60% of median income (2021),INSEE dossier_complet.csv,2020 files only,Not available in dossier for 2011 or 2016
+pct_female,Percentage of commune population that is female,Derived from census,All files,P{year}_POPF / P{year}_POP * 100
+pct_male,Percentage of commune population that is male,Derived from census,All files,P{year}_POPH / P{year}_POP * 100
+pct_age_0_14,Percentage of population aged 0–14,Derived from census,All files,P{year}_POP0014 / P{year}_POP * 100
+pct_age_15_29,Percentage of population aged 15–29,Derived from census,All files,P{year}_POP1529 / P{year}_POP * 100
+pct_age_30_44,Percentage of population aged 30–44,Derived from census,All files,P{year}_POP3044 / P{year}_POP * 100
+pct_age_45_59,Percentage of population aged 45–59,Derived from census,All files,P{year}_POP4559 / P{year}_POP * 100
+pct_age_60_74,Percentage of population aged 60–74,Derived from census,All files,P{year}_POP6074 / P{year}_POP * 100
+pct_age_75_plus,Percentage of population aged 75 and over,Derived from census,All files,Sum of P{year}_POP7589 + P{year}_POP90P / P{year}_POP * 100
+pct_edu_vocational,Percentage of non-students 15+ with vocational qualification (CAP/BEP),Derived from census,All files,P{year}_NSCOL15P_CAPBEP / P{year}_NSCOL15P * 100
+pct_edu_bac,Percentage of non-students 15+ with baccalauréat as highest qualification,Derived from census,All files,P{year}_NSCOL15P_BAC / P{year}_NSCOL15P * 100
+pct_edu_higher,Percentage of non-students 15+ with any higher education degree,Derived from census,All files,"2011/2016: P{year}_NSCOL15P_SUP; 2022: sum of SUP2 + SUP34 + SUP5 (split into 3 levels in later census)"
+pct_unemployed,Unemployment rate among active population aged 15–64,Derived from census,All files,P{year}_CHOM1564 / P{year}_ACT1564 * 100

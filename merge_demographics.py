@@ -21,9 +21,9 @@ import pandas as pd
 from pathlib import Path
 
 # --- Adjust for census / results files -----
-CENSUS_YEAR = "22"   # 2-digit year: "06", "11", "16", "22"
-INCOME_YEAR = "21"     # income data year: "06", "11", "16", "21" — set to None to omit income columns
-YEAR = "2020" #2014 or 2020
+CENSUS_YEAR = "16"   # 2-digit year: "06", "11", "16", "22"
+INCOME_YEAR = "16"     # income data year: "06", "11", "16", "21" — set to None to omit income columns
+YEAR = "2014" #2014 or 2020
 TOUR = "2"
 COMMUNE_TYPE = "plus" #plus or less
 

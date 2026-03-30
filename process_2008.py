@@ -60,7 +60,7 @@ import pandas as pd
 from utils import clean, to_int, save_outputs
 
 # --- Adjust tour ------
-TOUR = 2  # 1 or 2
+TOUR = 1  # 1 or 2
 
 # --- Paths ------
 BASE_DIR       = Path("/Users/propadiene/cloned-repos/cities-webscraper")
@@ -272,6 +272,7 @@ if __name__ == "__main__":
     # See module docstring for details and comparison with 2014/2020.
     df["elected"] = None
 
+    df["votes"] = df["votes"].astype("Int64")
     save_outputs(df, OUT_PATH, cols=OUTPUT_COLS, sort_by=["commune_code"])
     print(f"  Communes: {df['commune_code'].nunique():,}")
     print()

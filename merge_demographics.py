@@ -21,17 +21,18 @@ import pandas as pd
 from pathlib import Path
 
 # --- Adjust for census / results files -----
-CENSUS_YEAR = "11"   # 2-digit year: "06", "11", "16", "22"
-PATCH_YEAR  = "06"   # fallback census year for unmatched communes — set to None to disable
+CENSUS_YEAR = "22"   # 2-digit year: "06", "11", "16", "22"
+PATCH_YEAR  = "16"   # fallback census year for unmatched communes — set to None to disable
                      # e.g. CENSUS_YEAR="16", PATCH_YEAR="11" tries 2011 if 2016 has no match
-INCOME_YEAR = None     # income data year: "06", "11", "16", "21" — set to None to omit income columns
-YEAR = "2008" #2014 or 2020
+INCOME_YEAR = "22"     # income data year: "06", "11", "16", "21" — set to None to omit income columns
+YEAR = "2026" #2014 or 2020
 TOUR = "1"
-COMMUNE_TYPE = "plus" #plus or less
+COMMUNE_TYPE = "" #plus or less
+SUFFIX = ""#"_1000_"
 
 # --- Paths based on values ------
 BASE_DIR      = Path("/Users/propadiene/cloned-repos/cities-webscraper")
-ELECTION_FILE = BASE_DIR / f"france_{YEAR}/candidate_outputs/{COMMUNE_TYPE}_1000_tour{TOUR}_{YEAR}.csv"
+ELECTION_FILE = BASE_DIR / f"france_{YEAR}/candidate_outputs/{COMMUNE_TYPE}{SUFFIX}tour{TOUR}_{YEAR}.csv"
 CENSUS_FILE   = BASE_DIR / "france_census/dossier_complet.csv"
 OUT_FILE      = BASE_DIR / f"new_france_joined_outputs/france_joined_{YEAR}/joined_{COMMUNE_TYPE}_1000_tour{TOUR}_{YEAR}.csv"
 
@@ -191,7 +192,7 @@ if __name__ == "__main__":
             print(f"  Saved → {patch_path}")
 
     still_unmatched = merged[merged[f"{p}POP"].isna()]["commune_code"].unique()
-    unmatched_path = OUT_FILE.parent / f"unmatched_communes_{COMMUNE_TYPE}_1000_tour{TOUR}_{YEAR}.txt"
+    unmatched_path = OUT_FILE.parent / f"unmatched_communes_{COMMUNE_TYPE}{SUFFIX}tour{TOUR}_{YEAR}.txt"
     unmatched_path.parent.mkdir(parents=True, exist_ok=True)
     unmatched_path.write_text("\n".join(sorted(still_unmatched)), encoding="utf-8")
     if len(still_unmatched) > 0:

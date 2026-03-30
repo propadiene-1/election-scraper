@@ -22,9 +22,11 @@ from pathlib import Path
 
 # --- Adjust for census / results files -----
 CENSUS_YEAR = "11"   # 2-digit year: "06", "11", "16", "22"
+PATCH_YEAR  = "06"   # fallback census year for unmatched communes — set to None to disable
+                     # e.g. CENSUS_YEAR="16", PATCH_YEAR="11" tries 2011 if 2016 has no match
 INCOME_YEAR = None     # income data year: "06", "11", "16", "21" — set to None to omit income columns
 YEAR = "2008" #2014 or 2020
-TOUR = "2"
+TOUR = "1"
 COMMUNE_TYPE = "plus" #plus or less
 
 # --- Paths based on values ------
@@ -88,7 +90,7 @@ def compute_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     df["pct_edu_vocational"] = df[f"{p}NSCOL15P_CAPBEP"] / edu * 100
     df["pct_edu_bac"]        = df[f"{p}NSCOL15P_BAC"]    / edu * 100
-    
+
     if f"{p}NSCOL15P_SUP" in df.columns:
             df["pct_edu_higher"] = df[f"{p}NSCOL15P_SUP"] / edu * 100
     else:
@@ -103,20 +105,24 @@ def compute_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.round(2)
 
 
+def load_census(cols: list) -> pd.DataFrame:
+    return pd.read_csv(
+        CENSUS_FILE, sep=";", dtype={"CODGEO": str},
+        usecols=lambda col: col in cols,
+        low_memory=False, on_bad_lines="skip"
+    )
+
+
 if __name__ == "__main__":
     income_label = f"20{INCOME_YEAR}" if INCOME_YEAR else "omitted"
-    print(f"Census year: 20{CENSUS_YEAR} | Income year: {income_label}")
+    print(f"Census year: 20{CENSUS_YEAR} | Patch year: {f'20{PATCH_YEAR}' if PATCH_YEAR else 'disabled'} | Income year: {income_label}")
 
     print("Loading election data...")
     elections = pd.read_csv(ELECTION_FILE, dtype={"commune_code": str})
     print(f"  {len(elections):,} candidates, {elections['commune_code'].nunique():,} communes")
 
     print("Loading census data...")
-    census_raw = pd.read_csv(
-        CENSUS_FILE, sep=";", dtype={"CODGEO": str},
-        usecols=lambda col: col in CENSUS_COLS,
-        low_memory=False, on_bad_lines="skip"
-    )
+    census_raw = load_census(CENSUS_COLS)
     print(f"  {len(census_raw):,} communes loaded")
 
     missing = [c for c in CENSUS_COLS if c not in census_raw.columns]
@@ -130,16 +136,68 @@ if __name__ == "__main__":
         census_raw, left_on="merge_code", right_on="CODGEO", how="left"
     ).drop(columns=["merge_code"])
 
-    matched = merged[f"{p}POP"].notna().sum()
-    print(f"  Matched: {matched:,} / {len(merged):,} ({matched/len(merged)*100:.1f}%)")
-
+    total_rows = len(merged)
+    main_matched = merged[f"{p}POP"].notna().sum()
     unmatched = merged[merged[f"{p}POP"].isna()]["commune_code"].unique()
+    print(f"  Matched (20{CENSUS_YEAR} only):  {main_matched:,} / {total_rows:,} ({main_matched/total_rows*100:.1f}%)")
     if len(unmatched) > 0:
-        print(f"  Unmatched communes: {len(unmatched)}")
-        unmatched_path = OUT_FILE.parent / f"unmatched_communes_tour{TOUR}_{YEAR}.txt"
-        unmatched_path.parent.mkdir(parents=True, exist_ok=True)
-        unmatched_path.write_text("\n".join(sorted(unmatched)), encoding="utf-8")
-        print(f"  Full list saved → {unmatched_path}")
+        print(f"  Unmatched after main:   {total_rows - main_matched:,} rows across {len(unmatched)} communes")
+
+    # --- Patch fallback ---
+    if PATCH_YEAR and len(unmatched) > 0:
+        pp = f"P{PATCH_YEAR}_"
+        # Build patch column list: swap main prefix for patch prefix (skip income cols)
+        patch_cols = ["CODGEO"] + [
+            c.replace(p, pp) for c in CENSUS_COLS if c.startswith(p)
+        ]
+        print(f"Loading patch census (20{PATCH_YEAR})...")
+        patch_raw = load_census(patch_cols)
+
+        missing_patch = [c for c in patch_cols if c not in patch_raw.columns]
+        if missing_patch:
+            print(f"  Note: {len(missing_patch)} patch columns not found and skipped: {missing_patch}")
+
+        # Rename patch prefix → main prefix so compute_derived_columns works unchanged
+        rename_map = {c: c.replace(pp, p) for c in patch_raw.columns if c.startswith(pp)}
+        patch_raw = patch_raw.rename(columns=rename_map).set_index("CODGEO")
+
+        unmatched_mask = merged[f"{p}POP"].isna()
+        merge_codes = (
+            merged.loc[unmatched_mask, "commune_code"]
+            .str.replace(r"(SR|SN)\d+$", "", regex=True)
+        )
+
+        patch_fill_cols = [c for c in patch_raw.columns if c in merged.columns]
+        for col in patch_fill_cols:
+            merged.loc[unmatched_mask, col] = merge_codes.map(patch_raw[col]).values
+
+        patched_mask = unmatched_mask & merged[f"{p}POP"].notna()
+        patched_codes = sorted(
+            merge_codes[patched_mask[unmatched_mask].values].unique()
+        )
+        print(f"  Patched {len(patched_codes)} communes ({patched_mask.sum():,} rows) using 20{PATCH_YEAR} census")
+
+        total_matched = main_matched + patched_mask.sum()
+        print(f"  Patched (20{PATCH_YEAR}):          {patched_mask.sum():,} rows across {len(patched_codes)} communes")
+        print(f"  Matched (incl. patch):  {total_matched:,} / {total_rows:,} ({total_matched/total_rows*100:.1f}%)")
+        print(f"  Still unmatched:        {total_rows - total_matched:,} rows")
+
+        if patched_codes:
+            patch_path = OUT_FILE.parent / f"patched_communes_{COMMUNE_TYPE}_1000_tour{TOUR}_{YEAR}.csv"
+            pd.DataFrame({
+                "commune_code": patched_codes,
+                "census_year_used": f"20{PATCH_YEAR}",
+            }).to_csv(patch_path, index=False, encoding="utf-8-sig")
+            print(f"  Saved → {patch_path}")
+
+    still_unmatched = merged[merged[f"{p}POP"].isna()]["commune_code"].unique()
+    unmatched_path = OUT_FILE.parent / f"unmatched_communes_{COMMUNE_TYPE}_1000_tour{TOUR}_{YEAR}.txt"
+    unmatched_path.parent.mkdir(parents=True, exist_ok=True)
+    unmatched_path.write_text("\n".join(sorted(still_unmatched)), encoding="utf-8")
+    if len(still_unmatched) > 0:
+        print(f"  Unmatched communes saved → {unmatched_path}")
+    else:
+        print(f"  No unmatched communes — {unmatched_path} cleared")
 
     print("Computing derived percentages...")
     merged = compute_derived_columns(merged)
